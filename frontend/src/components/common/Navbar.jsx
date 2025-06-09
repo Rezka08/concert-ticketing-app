@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { HiMenu, HiX, HiUser, HiTicket, HiLogout, HiCog } from 'react-icons/hi';
+import { HiMenu, HiX, HiUser, HiTicket, HiLogout, HiCog, HiShoppingCart } from 'react-icons/hi';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated, isAdmin, loading } = useAuth();
@@ -94,13 +94,14 @@ const Navbar = () => {
               Concerts
             </Link>
           </li>
+          {/* UPDATED: Both admin and users can access My Orders */}
           {isAuthenticated && (
             <li>
               <Link 
                 to="/orders" 
                 className={`hover:text-primary ${location.pathname === '/orders' ? 'text-primary' : ''}`}
               >
-                My Orders
+                {isAdmin ? 'View Orders' : 'My Orders'}
               </Link>
             </li>
           )}
@@ -128,7 +129,9 @@ const Navbar = () => {
             <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
               <li className="menu-title">
                 <span className="font-semibold">{user.name}</span>
-                <span className="text-xs opacity-60 capitalize">{user.role}</span>
+                <span className="text-xs opacity-60 capitalize">
+                  {user.role} {isAdmin && '(Full Access)'}
+                </span>
               </li>
               <div className="divider my-1"></div>
               <li>
@@ -139,17 +142,25 @@ const Navbar = () => {
               </li>
               <li>
                 <Link to="/orders" onClick={closeMenu}>
-                  <HiTicket className="w-4 h-4" />
-                  My Orders
+                  <HiShoppingCart className="w-4 h-4" />
+                  {isAdmin ? 'View All Orders' : 'My Orders'}
                 </Link>
               </li>
               {isAdmin && (
-                <li>
-                  <Link to="/admin" onClick={closeMenu}>
-                    <HiCog className="w-4 h-4" />
-                    Admin Panel
-                  </Link>
-                </li>
+                <>
+                  <li>
+                    <Link to="/admin" onClick={closeMenu}>
+                      <HiCog className="w-4 h-4" />
+                      Admin Dashboard
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/admin/orders" onClick={closeMenu}>
+                      <HiTicket className="w-4 h-4" />
+                      Payment Verification
+                    </Link>
+                  </li>
+                </>
               )}
               <div className="divider my-1"></div>
               <li>
@@ -216,7 +227,7 @@ const Navbar = () => {
             {isAuthenticated && user ? (
               <>
                 <div className="divider my-2">
-                  <span className="text-sm font-semibold">{user.name}</span>
+                  <span className="text-sm font-semibold">{user.name} ({user.role})</span>
                 </div>
                 <li>
                   <Link 
@@ -224,8 +235,8 @@ const Navbar = () => {
                     onClick={closeMenu}
                     className={location.pathname === '/orders' ? 'active' : ''}
                   >
-                    <HiTicket className="w-4 h-4" />
-                    My Orders
+                    <HiShoppingCart className="w-4 h-4" />
+                    {isAdmin ? 'View Orders' : 'My Orders'}
                   </Link>
                 </li>
                 <li>
@@ -239,16 +250,28 @@ const Navbar = () => {
                   </Link>
                 </li>
                 {isAdmin && (
-                  <li>
-                    <Link 
-                      to="/admin" 
-                      onClick={closeMenu}
-                      className={location.pathname.startsWith('/admin') ? 'active' : ''}
-                    >
-                      <HiCog className="w-4 h-4" />
-                      Admin Panel
-                    </Link>
-                  </li>
+                  <>
+                    <li>
+                      <Link 
+                        to="/admin" 
+                        onClick={closeMenu}
+                        className={location.pathname.startsWith('/admin') ? 'active' : ''}
+                      >
+                        <HiCog className="w-4 h-4" />
+                        Admin Panel
+                      </Link>
+                    </li>
+                    <li>
+                      <Link 
+                        to="/admin/orders" 
+                        onClick={closeMenu}
+                        className={location.pathname === '/admin/orders' ? 'active' : ''}
+                      >
+                        <HiTicket className="w-4 h-4" />
+                        Payment Verification
+                      </Link>
+                    </li>
+                  </>
                 )}
                 <li>
                   <button 

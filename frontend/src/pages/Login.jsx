@@ -200,47 +200,6 @@ const Login = () => {
                 </Link>
               </p>
             </div>
-
-            {/* Demo credentials */}
-            <div className="bg-base-200 p-4 rounded-lg mt-4">
-              <p className="text-sm font-semibold mb-2">Demo Credentials:</p>
-              <div className="text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span><strong>Admin:</strong></span>
-                  <div className="text-right">
-                    <div>admin@example.com</div>
-                    <div>password</div>
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <span><strong>User:</strong></span>
-                  <div className="text-right">
-                    <div>user@example.com</div>
-                    <div>password</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Quick login buttons */}
-              <div className="flex gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ email: 'admin@example.com', password: 'password' })}
-                  className="btn btn-ghost btn-xs flex-1"
-                  disabled={submitting}
-                >
-                  Fill Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ email: 'user@example.com', password: 'password' })}
-                  className="btn btn-ghost btn-xs flex-1"
-                  disabled={submitting}
-                >
-                  Fill User
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

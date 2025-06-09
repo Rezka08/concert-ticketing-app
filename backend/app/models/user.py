@@ -18,10 +18,25 @@ class User(db.Model):
     orders = db.relationship('Order', backref='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
-        self.password = generate_password_hash(password)
+        """Set password with proper hashing"""
+        try:
+            # Use pbkdf2:sha256 method for better compatibility
+            self.password = generate_password_hash(password, method='pbkdf2:sha256')
+            print(f"Password hashed successfully for user: {self.email}")
+        except Exception as e:
+            print(f"Error hashing password for user {self.email}: {str(e)}")
+            # Fallback to default method
+            self.password = generate_password_hash(password)
     
     def check_password(self, password):
-        return check_password_hash(self.password, password)
+        """Check password against hash"""
+        try:
+            result = check_password_hash(self.password, password)
+            print(f"Password check for {self.email}: {'SUCCESS' if result else 'FAILED'}")
+            return result
+        except Exception as e:
+            print(f"Error checking password for user {self.email}: {str(e)}")
+            return False
     
     def to_dict(self):
         return {

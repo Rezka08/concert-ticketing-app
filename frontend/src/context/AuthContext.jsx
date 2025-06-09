@@ -12,29 +12,21 @@ export const useAuth = () => {
   return context;
 };
 
-// Enhanced storage utility with better error handling and verification
+// Simplified storage utility
 const storage = {
   setItem: (key, value) => {
     try {
       if (value === null || value === undefined) {
         localStorage.removeItem(key);
-        console.log(`🗑️ Storage removed ${key}`);
+        console.log(`🗑️ Removed ${key} from storage`);
       } else {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
         localStorage.setItem(key, stringValue);
-        
-        // Immediately verify the save
-        const saved = localStorage.getItem(key);
-        if (saved === stringValue) {
-          console.log(`✅ Storage verified ${key}:`, saved ? 'saved successfully' : 'removed');
-          return true;
-        } else {
-          console.error(`❌ Storage verification failed for ${key}:`, { expected: stringValue, actual: saved });
-          return false;
-        }
+        console.log(`💾 Saved ${key} to storage`);
       }
+      return true;
     } catch (error) {
-      console.error(`❌ Storage set ${key} failed:`, error);
+      console.error(`❌ Storage error for ${key}:`, error);
       return false;
     }
   },
@@ -44,7 +36,6 @@ const storage = {
       const item = localStorage.getItem(key);
       if (!item) return null;
       
-      // For token, return as string. For user, parse as JSON
       if (key === 'token') {
         return item;
       } else {
@@ -55,27 +46,18 @@ const storage = {
         }
       }
     } catch (error) {
-      console.error(`❌ Storage get ${key} failed:`, error);
+      console.error(`❌ Storage get error for ${key}:`, error);
       return null;
-    }
-  },
-  
-  removeItem: (key) => {
-    try {
-      localStorage.removeItem(key);
-      console.log(`🗑️ Storage removed ${key}`);
-    } catch (error) {
-      console.error(`❌ Storage remove ${key} failed:`, error);
     }
   },
   
   clear: () => {
     try {
-      storage.removeItem('token');
-      storage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       console.log('🧹 Storage cleared');
     } catch (error) {
-      console.error('❌ Storage clear failed:', error);
+      console.error('❌ Storage clear error:', error);
     }
   }
 };
@@ -85,33 +67,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
 
-  // Debug function
-  const logAuthState = useCallback((action = '') => {
-    const state = {
-      action,
-      loading,
-      isAuthenticated: !!user,
-      user: user ? { id: user.user_id, name: user.name, role: user.role } : null,
-      token: token ? `${token.substring(0, 20)}...` : null,
-      localStorage: {
-        token: storage.getItem('token') ? `${storage.getItem('token').substring(0, 20)}...` : null,
-        user: storage.getItem('user') ? storage.getItem('user').name : null
-      }
-    };
-    console.log(`🔐 Auth [${action}]:`, state);
-    return state;
-  }, [loading, user, token]);
-
   // Clear all auth data
   const clearAuth = useCallback(() => {
     console.log('🧹 Clearing auth data...');
     setUser(null);
     setToken(null);
     storage.clear();
-    logAuthState('cleared');
-  }, [logAuthState]);
+  }, []);
 
-  // Initialize auth state
+  // Initialize auth state - SIMPLIFIED
   const initializeAuth = useCallback(async () => {
     try {
       console.log('🚀 Initializing auth...');
@@ -119,128 +83,131 @@ export const AuthProvider = ({ children }) => {
       const savedToken = storage.getItem('token');
       const savedUser = storage.getItem('user');
       
-      console.log('💾 Saved data:', {
-        token: savedToken ? `${savedToken.substring(0, 20)}...` : 'none',
-        user: savedUser ? savedUser.name : 'none'
-      });
-      
       if (savedToken && savedUser) {
+        console.log('💾 Found saved auth data, verifying...');
+        
+        // Check token format first
         try {
-          console.log('🔄 Verifying saved token...');
-          
-          // Set token in state first for API calls
-          setToken(savedToken);
-          
-          // Wait a bit to ensure state is updated
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          console.log('📞 Making profile API call with token...');
-          
-          // Verify token is still valid by calling profile endpoint
+          const payload = JSON.parse(atob(savedToken.split('.')[1]));
+          if (typeof payload.sub !== 'string') {
+            console.log('❌ Token has invalid subject type (not string), clearing...');
+            clearAuth();
+            return;
+          }
+        } catch (tokenParseError) {
+          console.log('❌ Token format is corrupted, clearing...');
+          clearAuth();
+          return;
+        }
+        
+        // Set token first for API calls
+        setToken(savedToken);
+        
+        try {
+          // Verify token by calling profile endpoint
           const response = await authAPI.getProfile();
           const currentUser = response.data.data;
           
-          console.log('✅ Token verified successfully, user:', currentUser.name);
+          console.log('✅ Token verified, user:', currentUser.name);
           
           // Update state with fresh user data
           setUser(currentUser);
-          
-          // Update localStorage with fresh user data
           storage.setItem('user', currentUser);
           
-          logAuthState('initialized');
-          
         } catch (error) {
-          console.log('❌ Token verification failed:', error.response?.status, error.message);
-          console.log('🧹 Clearing invalid auth data...');
+          console.log('❌ Token verification failed:', error.response?.status);
+          
+          // Check if it's the "Subject must be a string" error
+          if (error.response?.data?.error?.includes('Subject must be a string') || 
+              error.response?.data?.error?.includes('Token format incompatible')) {
+            console.log('🚨 Detected old token format - clearing and requiring re-login');
+          }
+          
           clearAuth();
         }
       } else {
         console.log('ℹ️ No saved auth data found');
-        logAuthState('no-saved-data');
       }
     } catch (error) {
       console.error('❌ Auth initialization error:', error);
       clearAuth();
     } finally {
       setLoading(false);
-      console.log('✅ Auth initialization complete');
     }
-  }, [clearAuth, logAuthState]);
+  }, [clearAuth]);
 
   // Initialize on mount
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
-  // Login function with better token handling
+  // Login function - SIMPLIFIED
   const login = useCallback(async (email, password) => {
     try {
       console.log('🔑 Attempting login for:', email);
       
-      const response = await authAPI.login(email, password);
-      const { user: userData, access_token } = response.data.data;
+      // Clear any existing auth first
+      clearAuth();
       
-      console.log('📨 Login response received:', {
-        user: userData ? userData.name : 'missing',
-        token: access_token ? `${access_token.substring(0, 20)}...` : 'missing',
-        tokenLength: access_token ? access_token.length : 0
+      const response = await authAPI.login(email, password);
+      
+      console.log('📨 Login response status:', response.status);
+      console.log('📨 Login response data structure:', {
+        hasData: !!response.data,
+        hasDataData: !!response.data?.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        dataDataKeys: response.data?.data ? Object.keys(response.data.data) : []
       });
+      
+      const { user: userData, access_token } = response.data.data;
       
       if (!userData || !access_token) {
         throw new Error('Invalid response: missing user or token');
       }
       
-      console.log('💾 Saving auth data to localStorage...');
+      console.log('📝 Saving auth data...', {
+        userName: userData.name,
+        tokenLength: access_token.length
+      });
       
-      // Save to localStorage first
+      // Save to localStorage
       const tokenSaved = storage.setItem('token', access_token);
       const userSaved = storage.setItem('user', userData);
       
       if (!tokenSaved || !userSaved) {
-        throw new Error('Failed to save auth data to localStorage');
+        throw new Error('Failed to save auth data');
       }
       
-      // Verify localStorage save
-      const verifyToken = storage.getItem('token');
-      const verifyUser = storage.getItem('user');
-      
-      console.log('🔍 Verification check:', {
-        tokenMatch: verifyToken === access_token,
-        userMatch: verifyUser?.user_id === userData.user_id,
-        tokenLength: verifyToken ? verifyToken.length : 0
-      });
-      
-      if (verifyToken !== access_token) {
-        throw new Error('Token verification failed - localStorage save issue');
-      }
-      
-      // Update state after successful localStorage save
-      console.log('📝 Updating React state...');
+      // Update state
       setToken(access_token);
       setUser(userData);
       
-      // Wait a bit to ensure state is updated before making API calls
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
       console.log('✅ Login completed successfully');
-      logAuthState('login-success');
       toast.success(`Welcome back, ${userData.name}!`);
       
       return userData;
     } catch (error) {
       console.error('❌ Login error:', error);
-      
-      // Clean up on error
       clearAuth();
       
-      const message = error.response?.data?.message || error.message || 'Login failed';
+      // Enhanced error message
+      let message = 'Login failed';
+      if (error.response?.status === 401) {
+        message = 'Invalid email or password';
+      } else if (error.response?.status === 500) {
+        message = 'Server error. Please try again.';
+      } else if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       toast.error(message);
       throw error;
     }
-  }, [logAuthState, clearAuth]);
+  }, [clearAuth]);
 
-  // Register function
+  // Register function - SIMPLIFIED
   const register = useCallback(async (userData) => {
     try {
       console.log('📝 Attempting registration for:', userData.email);
@@ -248,30 +215,19 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.register(userData);
       const { user: newUser, access_token } = response.data.data;
       
-      console.log('📨 Registration response:', {
-        user: newUser ? newUser.name : 'missing',
-        token: access_token ? `${access_token.substring(0, 20)}...` : 'missing'
-      });
-      
       if (!newUser || !access_token) {
         throw new Error('Invalid response: missing user or token');
       }
       
-      // Save to localStorage first
-      const tokenSaved = storage.setItem('token', access_token);
-      const userSaved = storage.setItem('user', newUser);
-      
-      if (!tokenSaved || !userSaved) {
-        throw new Error('Failed to save auth data to localStorage');
-      }
+      // Save to localStorage
+      storage.setItem('token', access_token);
+      storage.setItem('user', newUser);
       
       // Update state
       setToken(access_token);
       setUser(newUser);
       
-      logAuthState('register-success');
       toast.success(`Welcome to ConcertTix, ${newUser.name}!`);
-      
       return newUser;
     } catch (error) {
       console.error('❌ Registration error:', error);
@@ -281,7 +237,7 @@ export const AuthProvider = ({ children }) => {
       toast.error(message);
       throw error;
     }
-  }, [logAuthState, clearAuth]);
+  }, [clearAuth]);
 
   // Logout function
   const logout = useCallback(() => {
@@ -299,9 +255,7 @@ export const AuthProvider = ({ children }) => {
       setUser(updatedUser);
       storage.setItem('user', updatedUser);
       
-      logAuthState('profile-updated');
       toast.success('Profile updated successfully!');
-      
       return updatedUser;
     } catch (error) {
       console.error('❌ Profile update error:', error);
@@ -309,7 +263,7 @@ export const AuthProvider = ({ children }) => {
       toast.error(message);
       throw error;
     }
-  }, [logAuthState]);
+  }, []);
 
   // Refresh auth function
   const refreshAuth = useCallback(async () => {
@@ -321,14 +275,13 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       storage.setItem('user', currentUser);
       
-      logAuthState('refreshed');
       return currentUser;
     } catch (error) {
       console.error('❌ Auth refresh failed:', error);
       clearAuth();
       throw error;
     }
-  }, [clearAuth, logAuthState]);
+  }, [clearAuth]);
 
   // Get current token function
   const getCurrentToken = useCallback(() => {

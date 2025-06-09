@@ -7,7 +7,6 @@ console.log('🌐 API Base URL:', API_BASE_URL);
 // Utility function to get token safely with multiple fallbacks
 const getToken = () => {
   try {
-    // Try multiple ways to get the token
     let token = localStorage.getItem('token');
     
     // Remove any quotes that might be added
@@ -50,6 +49,18 @@ const isValidToken = (token) => {
     return false;
   }
   
+  // Check JWT subject format
+  try {
+    const payload = JSON.parse(atob(parts[1]));
+    if (payload.sub && typeof payload.sub !== 'string') {
+      console.log('❌ Invalid token: subject is not a string', typeof payload.sub);
+      return false;
+    }
+  } catch (e) {
+    console.log('❌ Invalid token: cannot decode payload');
+    return false;
+  }
+  
   return true;
 };
 
@@ -74,8 +85,7 @@ api.interceptors.request.use(
         console.log(`🔑 Token attached: ${token.substring(0, 20)}... (length: ${token.length})`);
         console.log(`📋 Full Authorization header: Bearer ${token.substring(0, 20)}...`);
       } else {
-        console.log('❌ Invalid token found, not attaching to request');
-        console.log('🧹 Clearing invalid token...');
+        console.log('❌ Invalid token found, clearing and not attaching to request');
         clearAuthData();
       }
     } else {
@@ -128,15 +138,27 @@ api.interceptors.response.use(
     if (status === 401) {
       console.log('🚨 401 Unauthorized - Token might be invalid or expired');
       
-      // Check if we actually sent a token
       const sentToken = error.config?.headers?.Authorization;
       if (sentToken) {
         console.log('🔍 We sent a token but got 401:', sentToken.substring(0, 30) + '...');
         console.log('🧐 This suggests the token is invalid or expired');
         
-        // Log backend response for more insight
-        if (responseData) {
-          console.log('🔙 Backend response:', responseData);
+        // Check for specific JWT errors
+        if (responseData?.error) {
+          const errorMsg = responseData.error.toLowerCase();
+          
+          if (errorMsg.includes('subject must be a string') || 
+              errorMsg.includes('token format incompatible')) {
+            console.log('🚨 DETECTED: Old token format issue - JWT subject is not string');
+            console.log('🔧 This happens when backend expects string identity but token has integer');
+            console.log('🔄 User needs to login again to get new token format');
+          } else if (errorMsg.includes('invalid token') || errorMsg.includes('decode')) {
+            console.log('🚨 DETECTED: Token decode/format error');
+          } else if (errorMsg.includes('expired')) {
+            console.log('🚨 DETECTED: Token has expired');
+          } else if (errorMsg.includes('signature')) {
+            console.log('🚨 DETECTED: Token signature verification failed');
+          }
         }
         
         clearAuthData();
@@ -195,6 +217,12 @@ export const testTokenValidity = async () => {
     
     console.log('🧪 Testing token validity...');
     console.log('🔑 Token preview:', token.substring(0, 50) + '...');
+    
+    // Check format first
+    if (!isValidToken(token)) {
+      console.log('❌ Token format is invalid');
+      return false;
+    }
     
     // Make a simple profile call to test
     const response = await api.get('/auth/profile');

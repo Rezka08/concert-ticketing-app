@@ -1,4 +1,4 @@
-// import React from 'react';
+// frontend/src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/common/Navbar';
@@ -21,6 +21,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageConcerts from './pages/admin/ManageConcerts';
 import ManageUsers from './pages/admin/ManageUsers';
 import SalesReports from './pages/admin/SalesReports';
+import PaymentVerification from './pages/admin/PaymentVerification';
 
 // Import Toaster for notifications
 import { Toaster } from 'react-hot-toast';
@@ -95,6 +96,15 @@ function App() {
                 element={
                   <ProtectedRoute adminOnly>
                     <SalesReports />
+                  </ProtectedRoute>
+                } 
+              />
+              {/* NEW: Payment Verification Route */}
+              <Route 
+                path="/admin/orders" 
+                element={
+                  <ProtectedRoute adminOnly>
+                    <PaymentVerification />
                   </ProtectedRoute>
                 } 
               />

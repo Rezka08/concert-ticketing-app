@@ -1,9 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from app import db
 from app.models.ticket_type import TicketType
 from app.models.concert import Concert
-from app.utils.auth import admin_required
+from app.models.order import Order
+from app.models.order_item import OrderItem
+from app.utils.auth import admin_required, user_required
 from app.utils.helpers import success_response, error_response
+from app.utils.pdf_generator import generate_ticket_pdf
+import io
+import os
 
 tickets_bp = Blueprint('tickets', __name__)
 
@@ -90,3 +95,103 @@ def delete_ticket(current_user, ticket_id):
     except Exception as e:
         db.session.rollback()
         return error_response('Failed to delete ticket type', 500)
+
+# NEW: Download PDF Ticket
+@tickets_bp.route('/download/<int:order_id>', methods=['GET'])
+@user_required
+def download_ticket_pdf(current_user, order_id):
+    try:
+        print(f"=== PDF TICKET DOWNLOAD REQUEST ===")
+        print(f"User: {current_user.name} (ID: {current_user.user_id})")
+        print(f"Order ID: {order_id}")
+        
+        # Get order and verify ownership (unless admin)
+        order = Order.query.get(order_id)
+        
+        if not order:
+            print("Order not found")
+            return error_response('Order not found', 404)
+        
+        # Check if user owns this order (admin can download any)
+        if current_user.role != 'admin' and order.user_id != current_user.user_id:
+            print(f"Access denied: Order belongs to user {order.user_id}, current user is {current_user.user_id}")
+            return error_response('Access denied', 403)
+        
+        # Check if order is paid
+        if order.status != 'paid':
+            print(f"Order not paid: status is {order.status}")
+            return error_response('Tickets can only be downloaded for paid orders', 400)
+        
+        print("Generating PDF ticket...")
+        
+        # Generate PDF
+        pdf_buffer = generate_ticket_pdf(order)
+        
+        if not pdf_buffer:
+            print("Failed to generate PDF")
+            return error_response('Failed to generate ticket PDF', 500)
+        
+        pdf_buffer.seek(0)
+        
+        filename = f"Concert_Tickets_Order_{order_id}.pdf"
+        print(f"PDF generated successfully: {filename}")
+        
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"Error generating PDF ticket: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return error_response('Failed to generate ticket PDF', 500)
+
+# NEW: Preview PDF Ticket (opens in browser)
+@tickets_bp.route('/preview/<int:order_id>', methods=['GET'])
+@user_required
+def preview_ticket_pdf(current_user, order_id):
+    try:
+        print(f"=== PDF TICKET PREVIEW REQUEST ===")
+        print(f"User: {current_user.name} (ID: {current_user.user_id})")
+        print(f"Order ID: {order_id}")
+        
+        # Get order and verify ownership (unless admin)
+        order = Order.query.get(order_id)
+        
+        if not order:
+            return error_response('Order not found', 404)
+        
+        # Check if user owns this order (admin can preview any)
+        if current_user.role != 'admin' and order.user_id != current_user.user_id:
+            return error_response('Access denied', 403)
+        
+        # Check if order is paid
+        if order.status != 'paid':
+            return error_response('Tickets can only be previewed for paid orders', 400)
+        
+        print("Generating PDF preview...")
+        
+        # Generate PDF
+        pdf_buffer = generate_ticket_pdf(order)
+        
+        if not pdf_buffer:
+            return error_response('Failed to generate ticket PDF', 500)
+        
+        pdf_buffer.seek(0)
+        
+        print("PDF preview generated successfully")
+        
+        return send_file(
+            pdf_buffer,
+            as_attachment=False,  # Preview mode - open in browser
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"Error generating PDF preview: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return error_response('Failed to generate ticket preview', 500)

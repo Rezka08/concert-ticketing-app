@@ -5,6 +5,7 @@ from app.models.user import User
 from app.utils.auth import user_required
 from app.utils.helpers import success_response, error_response
 import re
+import traceback
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -60,8 +61,9 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        # Buat access token
-        access_token = create_access_token(identity=user.user_id)
+        # FIXED: Convert user_id to string for JWT subject
+        access_token = create_access_token(identity=str(user.user_id))
+        print(f"Token created for user ID: {user.user_id} (as string: '{str(user.user_id)}')")
         
         return success_response({
             'user': user.to_dict(),
@@ -70,35 +72,73 @@ def register():
         
     except Exception as e:
         db.session.rollback()
+        print(f"Registration error: {str(e)}")
+        print(traceback.format_exc())
         return error_response('Registration failed', 500)
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:
+        print("=== LOGIN REQUEST DEBUG ===")
+        
+        # Get request data
         data = request.get_json()
+        print(f"Request data: {data}")
+        
+        if not data:
+            print("No JSON data received")
+            return error_response('No data provided', 400)
         
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
         
+        print(f"Email: {email}")
+        print(f"Password length: {len(password) if password else 0}")
+        
         if not email or not password:
+            print("Email or password missing")
             return error_response('Email and password are required', 400)
         
         # Cari user berdasarkan email
+        print(f"Searching for user with email: {email}")
         user = User.query.filter_by(email=email).first()
         
-        if not user or not user.check_password(password):
+        if not user:
+            print("User not found")
             return error_response('Invalid email or password', 401)
         
-        # Buat access token
-        access_token = create_access_token(identity=user.user_id)
+        print(f"User found: {user.name} (ID: {user.user_id})")
         
-        return success_response({
+        # Check password
+        print("Checking password...")
+        password_valid = user.check_password(password)
+        print(f"Password valid: {password_valid}")
+        
+        if not password_valid:
+            print("Invalid password")
+            return error_response('Invalid email or password', 401)
+        
+        # FIXED: Convert user_id to string for JWT subject
+        print(f"Creating access token for user ID: {user.user_id}")
+        access_token = create_access_token(identity=str(user.user_id))
+        print(f"Token created successfully with string identity: '{str(user.user_id)}'")
+        print(f"Token preview: {access_token[:50]}...")
+        
+        response_data = {
             'user': user.to_dict(),
             'access_token': access_token
-        }, 'Login successful')
+        }
+        
+        print(f"Response data keys: {list(response_data.keys())}")
+        print("=== LOGIN SUCCESS ===")
+        
+        return success_response(response_data, 'Login successful')
         
     except Exception as e:
-        return error_response('Login failed', 500)
+        print(f"=== LOGIN ERROR ===")
+        print(f"Error: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return error_response(f'Login failed: {str(e)}', 500)
 
 @auth_bp.route('/profile', methods=['GET'])
 @user_required
@@ -106,6 +146,8 @@ def get_profile(current_user):
     try:
         return success_response(current_user.to_dict(), 'Profile retrieved successfully')
     except Exception as e:
+        print(f"Profile error: {str(e)}")
+        print(traceback.format_exc())
         return error_response('Failed to get profile', 500)
 
 @auth_bp.route('/profile', methods=['PUT'])
@@ -142,6 +184,8 @@ def update_profile(current_user):
         
     except Exception as e:
         db.session.rollback()
+        print(f"Profile update error: {str(e)}")
+        print(traceback.format_exc())
         return error_response('Failed to update profile', 500)
 
 @auth_bp.route('/change-password', methods=['PUT'])
@@ -173,4 +217,6 @@ def change_password(current_user):
         
     except Exception as e:
         db.session.rollback()
+        print(f"Password change error: {str(e)}")
+        print(traceback.format_exc())
         return error_response('Failed to change password', 500)

@@ -1,4 +1,3 @@
-// import React from 'react';
 import { Link } from 'react-router-dom';
 import { HiMail, HiPhone, HiLocationMarker } from 'react-icons/hi';
 
@@ -26,11 +25,11 @@ const Footer = () => {
           </div>
           <div className="flex items-center gap-2">
             <HiPhone className="w-4 h-4" />
-            <span>+62 123 456 7890</span>
+            <span>+62 811 581 233</span>
           </div>
           <div className="flex items-center gap-2">
             <HiLocationMarker className="w-4 h-4" />
-            <span>Jakarta, Indonesia</span>
+            <span>Makassar, Indonesia</span>
           </div>
         </div>
         <div>
@@ -44,7 +43,7 @@ const Footer = () => {
       </div>
       <div className="footer footer-center p-4 bg-base-300 text-base-content">
         <div>
-          <p>Copyright © 2024 - All rights reserved by Concert Ticketing App</p>
+          <p>Copyright © 2025 - All rights reserved by Concert Ticketing App</p>
         </div>
       </div>
     </footer>

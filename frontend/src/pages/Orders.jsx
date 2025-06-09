@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ordersAPI } from '../services/orders';
+import { ticketsAPI } from '../services/tickets';
 import { formatDateTime, formatCurrency, getOrderStatusBadge } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Pagination from '../components/common/Pagination';
 import Modal from '../components/common/Modal';
-import { HiTicket, HiCalendar, HiCreditCard, HiEye, HiX } from 'react-icons/hi';
+import { useAuth } from '../context/AuthContext';
+import { HiTicket, HiCalendar, HiCreditCard, HiEye, HiX, HiDownload, HiClock } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 
 const Orders = () => {
+  const { isAdmin } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,6 +24,7 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState({});
 
   useEffect(() => {
     fetchOrders();
@@ -68,7 +72,7 @@ const Orders = () => {
     try {
       setActionLoading(true);
       await ordersAPI.payOrder(orderId, { payment_method: 'bank_transfer' });
-      toast.success('Payment processed successfully');
+      toast.success('Payment submitted successfully! Please wait for admin confirmation.');
       fetchOrders();
       setShowOrderModal(false);
     } catch (error) {
@@ -98,13 +102,43 @@ const Orders = () => {
     }
   };
 
+  // NEW: Download PDF Ticket
+  const handleDownloadTicket = async (orderId) => {
+    try {
+      setDownloadLoading(prev => ({ ...prev, [orderId]: true }));
+      
+      await ticketsAPI.downloadTicketPDF(orderId);
+      toast.success('Ticket downloaded successfully!');
+      
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to download ticket';
+      toast.error(message);
+    } finally {
+      setDownloadLoading(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  // NEW: Preview PDF Ticket
+  const handlePreviewTicket = async (orderId) => {
+    try {
+      await ticketsAPI.previewTicketPDF(orderId);
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to preview ticket';
+      toast.error(message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-base-200 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">My Orders</h1>
+          <h1 className="text-3xl font-bold mb-4">
+            {isAdmin ? 'All Orders' : 'My Orders'}
+          </h1>
           <p className="text-base-content/70">
-            Track and manage your ticket orders
+            {isAdmin 
+              ? 'View and manage all customer orders' 
+              : 'Track and manage your ticket orders'}
           </p>
         </div>
 
@@ -119,9 +153,9 @@ const Orders = () => {
                   onChange={handleStatusChange}
                 >
                   <option value="">All Orders</option>
-                  <option value="pending">Pending</option>
-                  <option value="paid">Paid</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="pending">⏳ Pending Payment</option>
+                  <option value="paid">✅ Confirmed</option>
+                  <option value="cancelled">❌ Cancelled</option>
                 </select>
               </div>
               
@@ -151,7 +185,7 @@ const Orders = () => {
                 ? 'No orders match your filter criteria' 
                 : "You haven't made any orders yet"}
             </p>
-            {!filters.status && (
+            {!filters.status && !isAdmin && (
               <Link to="/concerts" className="btn btn-primary">
                 Browse Concerts
               </Link>
@@ -168,6 +202,9 @@ const Orders = () => {
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold">Order #{order.order_id}</h3>
                           <div className={`badge ${getOrderStatusBadge(order.status)}`}>
+                            {order.status === 'pending' && '⏳ '}
+                            {order.status === 'paid' && '✅ '}
+                            {order.status === 'cancelled' && '❌ '}
                             {order.status}
                           </div>
                         </div>
@@ -191,6 +228,21 @@ const Orders = () => {
                               {formatCurrency(order.total_amount)}
                             </span>
                           </p>
+
+                          {/* Show status message */}
+                          {order.status === 'pending' && (
+                            <div className="flex items-center gap-2 text-warning">
+                              <HiClock className="w-4 h-4" />
+                              <span className="text-sm">Waiting for payment confirmation...</span>
+                            </div>
+                          )}
+                          
+                          {order.status === 'paid' && (
+                            <div className="flex items-center gap-2 text-success">
+                              <HiTicket className="w-4 h-4" />
+                              <span className="text-sm">Payment confirmed! You can download your tickets.</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -203,6 +255,7 @@ const Orders = () => {
                           View Details
                         </button>
                         
+                        {/* Order Status Specific Actions */}
                         {order.status === 'pending' && (
                           <>
                             <button
@@ -210,7 +263,7 @@ const Orders = () => {
                               className="btn btn-primary btn-sm"
                               disabled={actionLoading}
                             >
-                              Pay Now
+                              {actionLoading ? 'Processing...' : 'Submit Payment'}
                             </button>
                             <button
                               onClick={() => handleCancelOrder(order.order_id)}
@@ -218,6 +271,37 @@ const Orders = () => {
                               disabled={actionLoading}
                             >
                               Cancel
+                            </button>
+                          </>
+                        )}
+                        
+                        {/* NEW: Download Tickets for Paid Orders */}
+                        {order.status === 'paid' && (
+                          <>
+                            <button
+                              onClick={() => handleDownloadTicket(order.order_id)}
+                              className="btn btn-success btn-sm"
+                              disabled={downloadLoading[order.order_id]}
+                            >
+                              {downloadLoading[order.order_id] ? (
+                                <>
+                                  <span className="loading loading-spinner loading-sm"></span>
+                                  Downloading...
+                                </>
+                              ) : (
+                                <>
+                                  <HiDownload className="w-4 h-4 mr-2" />
+                                  Download Tickets
+                                </>
+                              )}
+                            </button>
+                            
+                            <button
+                              onClick={() => handlePreviewTicket(order.order_id)}
+                              className="btn btn-info btn-outline btn-sm"
+                            >
+                              <HiEye className="w-4 h-4 mr-2" />
+                              Preview
                             </button>
                           </>
                         )}
@@ -245,15 +329,28 @@ const Orders = () => {
           order={selectedOrder}
           onPay={handlePayOrder}
           onCancel={handleCancelOrder}
+          onDownloadTicket={handleDownloadTicket}
+          onPreviewTicket={handlePreviewTicket}
           loading={actionLoading}
+          downloadLoading={downloadLoading}
         />
       </div>
     </div>
   );
 };
 
-// Order Details Modal Component
-const OrderDetailsModal = ({ isOpen, onClose, order, onPay, onCancel, loading }) => {
+// Enhanced Order Details Modal Component
+const OrderDetailsModal = ({ 
+  isOpen, 
+  onClose, 
+  order, 
+  onPay, 
+  onCancel, 
+  onDownloadTicket, 
+  onPreviewTicket,
+  loading,
+  downloadLoading
+}) => {
   if (!order) return null;
 
   return (
@@ -264,6 +361,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPay, onCancel, loading })
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-semibold">Order #{order.order_id}</h4>
             <div className={`badge badge-lg ${getOrderStatusBadge(order.status)}`}>
+              {order.status === 'pending' && '⏳ '}
+              {order.status === 'paid' && '✅ '}
+              {order.status === 'cancelled' && '❌ '}
               {order.status}
             </div>
           </div>
@@ -312,30 +412,81 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPay, onCancel, loading })
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Status Specific Content */}
         {order.status === 'pending' && (
-          <div className="flex gap-4">
-            <button
-              onClick={() => onPay(order.order_id)}
-              className="btn btn-primary flex-1"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  Processing...
-                </>
-              ) : (
-                'Pay Now'
-              )}
-            </button>
-            <button
-              onClick={() => onCancel(order.order_id)}
-              className="btn btn-error btn-outline flex-1"
-              disabled={loading}
-            >
-              Cancel Order
-            </button>
+          <div className="bg-warning/10 p-4 rounded-lg">
+            <h4 className="font-semibold text-warning mb-2">⏳ Payment Required</h4>
+            <p className="text-sm mb-3">
+              Please submit your payment using the selected payment method. 
+              Your order will be confirmed after admin verification.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => onPay(order.order_id)}
+                className="btn btn-primary flex-1"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Processing...
+                  </>
+                ) : (
+                  'Submit Payment'
+                )}
+              </button>
+              <button
+                onClick={() => onCancel(order.order_id)}
+                className="btn btn-error btn-outline flex-1"
+                disabled={loading}
+              >
+                Cancel Order
+              </button>
+            </div>
+          </div>
+        )}
+
+        {order.status === 'paid' && (
+          <div className="bg-success/10 p-4 rounded-lg">
+            <h4 className="font-semibold text-success mb-2">✅ Payment Confirmed</h4>
+            <p className="text-sm mb-3">
+              Your payment has been confirmed! You can now download your tickets.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => onDownloadTicket(order.order_id)}
+                className="btn btn-success flex-1"
+                disabled={downloadLoading[order.order_id]}
+              >
+                {downloadLoading[order.order_id] ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <HiDownload className="w-4 h-4 mr-2" />
+                    Download PDF Tickets
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => onPreviewTicket(order.order_id)}
+                className="btn btn-info btn-outline"
+              >
+                <HiEye className="w-4 h-4 mr-2" />
+                Preview
+              </button>
+            </div>
+          </div>
+        )}
+
+        {order.status === 'cancelled' && (
+          <div className="bg-error/10 p-4 rounded-lg">
+            <h4 className="font-semibold text-error mb-2">❌ Order Cancelled</h4>
+            <p className="text-sm">
+              This order has been cancelled. If you have any questions, please contact support.
+            </p>
           </div>
         )}
       </div>

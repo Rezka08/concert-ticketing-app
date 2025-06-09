@@ -7,13 +7,13 @@ import { formatDate, formatTime, formatCurrency, getConcertStatusBadge } from '.
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Modal from '../components/common/Modal';
-import { HiCalendar, HiLocationMarker, HiTicket, HiPlus, HiMinus, HiShoppingCart } from 'react-icons/hi';
+import { HiCalendar, HiLocationMarker, HiTicket, HiPlus, HiMinus, HiShoppingCart, HiExclamationCircle } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 
 const ConcertDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isAdmin, user } = useAuth();
   
   const [concert, setConcert] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,6 +39,12 @@ const ConcertDetail = () => {
   };
 
   const handleTicketQuantityChange = (ticketTypeId, change) => {
+    // Prevent admin from selecting tickets
+    if (isAdmin) {
+      toast.error('Admins cannot book tickets. This feature is for customers only.');
+      return;
+    }
+
     const ticketType = concert.ticket_types.find(t => t.ticket_type_id === ticketTypeId);
     const currentQuantity = selectedTickets[ticketTypeId] || 0;
     const newQuantity = Math.max(0, Math.min(ticketType.quantity_available, currentQuantity + change));
@@ -64,6 +70,11 @@ const ConcertDetail = () => {
     if (!isAuthenticated) {
       toast.error('Please login to book tickets');
       navigate('/login');
+      return;
+    }
+
+    if (isAdmin) {
+      toast.error('Admins cannot book tickets. Please use a customer account.');
       return;
     }
 
@@ -93,7 +104,7 @@ const ConcertDetail = () => {
 
       const response = await ordersAPI.createOrder(orderData);
       
-      toast.success('Order created successfully!');
+      toast.success('Order created successfully! Please complete payment and wait for admin confirmation.');
       setShowBookingModal(false);
       navigate('/orders');
       
@@ -166,8 +177,19 @@ const ConcertDetail = () => {
               <div className="card-body">
                 <h2 className="card-title text-xl mb-4">
                   <HiTicket className="w-6 h-6" />
-                  Select Tickets
+                  {isAdmin ? 'Ticket Information' : 'Select Tickets'}
                 </h2>
+
+                {/* Admin Notice */}
+                {isAdmin && (
+                  <div className="alert alert-info mb-4">
+                    <HiExclamationCircle className="w-5 h-5" />
+                    <div>
+                      <h4 className="font-semibold">Admin View</h4>
+                      <p className="text-sm">You're viewing as admin. Ticket booking is disabled for admin accounts.</p>
+                    </div>
+                  </div>
+                )}
 
                 {concert.ticket_types && concert.ticket_types.length > 0 ? (
                   <div className="space-y-4">
@@ -188,28 +210,42 @@ const ConcertDetail = () => {
                         </div>
 
                         {ticketType.quantity_available > 0 ? (
-                          <div className="flex items-center justify-between mt-3">
-                            <span className="text-sm">Quantity:</span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleTicketQuantityChange(ticketType.ticket_type_id, -1)}
-                                className="btn btn-sm btn-circle btn-outline"
-                                disabled={!selectedTickets[ticketType.ticket_type_id]}
-                              >
-                                <HiMinus className="w-4 h-4" />
-                              </button>
-                              <span className="w-8 text-center">
-                                {selectedTickets[ticketType.ticket_type_id] || 0}
-                              </span>
-                              <button
-                                onClick={() => handleTicketQuantityChange(ticketType.ticket_type_id, 1)}
-                                className="btn btn-sm btn-circle btn-outline"
-                                disabled={(selectedTickets[ticketType.ticket_type_id] || 0) >= ticketType.quantity_available}
-                              >
-                                <HiPlus className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
+                          <>
+                            {/* Show quantity selector only for non-admin users */}
+                            {!isAdmin && (
+                              <div className="flex items-center justify-between mt-3">
+                                <span className="text-sm">Quantity:</span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleTicketQuantityChange(ticketType.ticket_type_id, -1)}
+                                    className="btn btn-sm btn-circle btn-outline"
+                                    disabled={!selectedTickets[ticketType.ticket_type_id]}
+                                  >
+                                    <HiMinus className="w-4 h-4" />
+                                  </button>
+                                  <span className="w-8 text-center">
+                                    {selectedTickets[ticketType.ticket_type_id] || 0}
+                                  </span>
+                                  <button
+                                    onClick={() => handleTicketQuantityChange(ticketType.ticket_type_id, 1)}
+                                    className="btn btn-sm btn-circle btn-outline"
+                                    disabled={(selectedTickets[ticketType.ticket_type_id] || 0) >= ticketType.quantity_available}
+                                  >
+                                    <HiPlus className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Admin view - just show availability */}
+                            {isAdmin && (
+                              <div className="text-center py-2">
+                                <span className="text-sm text-base-content/70">
+                                  Total: {ticketType.quantity_total} tickets
+                                </span>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <div className="text-center py-2">
                             <span className="text-error font-semibold">Sold Out</span>
@@ -218,8 +254,8 @@ const ConcertDetail = () => {
                       </div>
                     ))}
 
-                    {/* Total and Book Button */}
-                    {getTotalTickets() > 0 && (
+                    {/* Booking Section - Only for non-admin users */}
+                    {!isAdmin && getTotalTickets() > 0 && (
                       <div className="border-t pt-4">
                         <div className="flex justify-between items-center mb-4">
                           <span className="font-semibold">Total ({getTotalTickets()} tickets):</span>
@@ -238,6 +274,29 @@ const ConcertDetail = () => {
                         </button>
                       </div>
                     )}
+
+                    {/* Admin Actions */}
+                    {isAdmin && (
+                      <div className="border-t pt-4">
+                        <div className="text-center space-y-2">
+                          <p className="text-sm text-base-content/70">Admin Actions:</p>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => navigate('/admin/concerts')}
+                              className="btn btn-secondary btn-sm flex-1"
+                            >
+                              Manage Concert
+                            </button>
+                            <button 
+                              onClick={() => navigate('/admin/orders')}
+                              className="btn btn-accent btn-sm flex-1"
+                            >
+                              View Orders
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -245,7 +304,7 @@ const ConcertDetail = () => {
                   </div>
                 )}
 
-                {concert.status !== 'upcoming' && (
+                {concert.status !== 'upcoming' && !isAdmin && (
                   <div className="alert alert-warning mt-4">
                     <span>This concert is {concert.status}. Tickets are not available for booking.</span>
                   </div>
@@ -256,17 +315,19 @@ const ConcertDetail = () => {
         </div>
       </div>
 
-      {/* Booking Confirmation Modal */}
-      <BookingModal
-        isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
-        onConfirm={confirmBooking}
-        loading={bookingLoading}
-        concert={concert}
-        selectedTickets={selectedTickets}
-        totalPrice={getTotalPrice()}
-        totalTickets={getTotalTickets()}
-      />
+      {/* Booking Confirmation Modal - Only for non-admin users */}
+      {!isAdmin && (
+        <BookingModal
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          onConfirm={confirmBooking}
+          loading={bookingLoading}
+          concert={concert}
+          selectedTickets={selectedTickets}
+          totalPrice={getTotalPrice()}
+          totalTickets={getTotalTickets()}
+        />
+      )}
     </div>
   );
 };
@@ -345,6 +406,18 @@ const BookingModal = ({
               </label>
             ))}
           </div>
+        </div>
+
+        {/* Important Notice */}
+        <div className="bg-warning/10 p-4 rounded-lg">
+          <h4 className="font-semibold text-warning mb-2">📋 Important Notice</h4>
+          <ul className="text-sm space-y-1">
+            <li>• Your order will be created as "Pending" status</li>
+            <li>• Please make payment using your selected method</li>
+            <li>• Admin will verify your payment manually</li>
+            <li>• You can download tickets only after payment confirmation</li>
+            <li>• Check your orders page for status updates</li>
+          </ul>
         </div>
 
         {/* Actions */}
