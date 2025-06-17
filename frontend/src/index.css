@@ -55,3 +55,123 @@
   60% { content: '..'; }
   80%, 100% { content: '...'; }
 }
+
+.avatar-centered {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+/* Fix untuk avatar di navbar */
+.navbar .avatar > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+/* Fix untuk avatar di table dan card */
+.table .avatar > div,
+.card .avatar > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+/* Fix untuk modal avatar */
+.modal .avatar > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}
+
+/* Memastikan span/text di dalam avatar centered */
+.avatar span {
+  display: block !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+
+/* Fix untuk ikon di avatar */
+.avatar svg {
+  margin: auto !important;
+}
+
+/* Fix universal untuk semua avatar dengan background circular */
+[class*="rounded-full"].bg-primary,
+[class*="rounded-full"].bg-secondary,
+[class*="rounded-full"].bg-accent {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  overflow: hidden !important;
+}
+
+/* Fix khusus untuk avatar size yang berbeda */
+.avatar .w-8,
+.avatar .w-10,
+.avatar .w-12,
+.avatar .w-16,
+.avatar .w-20 {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fix untuk h-8, h-10, dll yang biasanya dipakai dengan w-8, w-10 */
+.avatar .h-8,
+.avatar .h-10,
+.avatar .h-12,
+.avatar .h-16,
+.avatar .h-20 {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Memastikan text tidak wrap dan tetap centered */
+.avatar span,
+.avatar div > span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Fix untuk dropdown avatar di navbar */
+.dropdown .avatar > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* TAMBAHAN: Fix khusus untuk komponen yang menggunakan avatar */
+.btn-circle.avatar,
+.btn-circle .avatar,
+.btn-circle > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Fix untuk PaymentVerification dan admin pages */
+.admin-avatar,
+.user-avatar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { adminAPI } from '../../services/admin';
 import { formatDateTime, formatCurrency } from '../../utils/helpers';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -223,8 +223,9 @@ const ManageUsers = () => {
                           <td>
                             <div className="flex items-center gap-3">
                               <div className="avatar">
-                                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
-                                  <span className="text-sm font-medium">
+                                {/* FIXED: Avatar dengan positioning yang lebih baik */}
+                                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center overflow-hidden">
+                                  <span className="text-sm font-semibold leading-none">
                                     {user.name.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
@@ -342,8 +343,9 @@ const UserDetailsModal = ({ isOpen, onClose, user, onUpdate }) => {
         {/* User Info */}
         <div className="flex items-center gap-4">
           <div className="avatar">
-            <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center">
-              <span className="text-xl font-bold">
+            {/* FIXED: Avatar dengan positioning yang lebih baik */}
+            <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center overflow-hidden">
+              <span className="text-xl font-bold leading-none">
                 {user.name.charAt(0).toUpperCase()}
               </span>
             </div>

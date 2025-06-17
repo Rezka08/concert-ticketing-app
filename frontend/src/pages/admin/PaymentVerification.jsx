@@ -5,7 +5,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import Pagination from '../../components/common/Pagination';
 import Modal from '../../components/common/Modal';
-import { HiCheck, HiX, HiEye, HiDownload, HiCreditCard, HiTicket, HiClock, HiExclamationCircle } from 'react-icons/hi';
+import { HiCheck, HiX, HiEye, HiDownload, HiCreditCard, HiTicket, HiClock, HiExclamationCircle, HiUser } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 
 const PaymentVerification = () => {
@@ -14,7 +14,7 @@ const PaymentVerification = () => {
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
-    status: 'payment_submitted', // Default show orders awaiting verification
+    status: 'payment_submitted',
     page: 1
   });
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -61,71 +61,68 @@ const PaymentVerification = () => {
   };
 
   const handleVerifyPayment = async (orderId, status, notes = '') => {
-  const statusText = status === 'paid' ? 'approve' : 'reject';
-  
-  if (!confirm(`Are you sure you want to ${statusText} this payment?`)) {
-    return;
-  }
-
-  try {
-    setActionLoading(true);
+    const statusText = status === 'paid' ? 'approve' : 'reject';
     
-    console.log('🔧 Payment verification requested:', {
-      orderId,
-      status, 
-      adminNotes: notes
-    });
-    
-    // FIXED: Send proper payload structure
-    const payload = {
-      status: status,
-      admin_notes: notes || ''
-    };
-    
-    console.log('📤 Sending payload:', payload);
-    
-    const response = await adminAPI.verifyPayment(orderId, payload);
-    
-    console.log('✅ Verification response:', response.data);
-    
-    const message = status === 'paid' 
-      ? 'Payment approved successfully! Customer can now download tickets.' 
-      : 'Payment rejected successfully.';
-    
-    toast.success(message);
-    fetchOrders();
-    setShowOrderModal(false);
-    
-  } catch (error) {
-    console.error('❌ Verification failed:', error);
-    
-    // Enhanced error handling
-    let errorMessage = `Failed to ${statusText} payment`;
-    
-    if (error.response?.status === 400) {
-      errorMessage = error.response.data?.message || 'Invalid request. Please check order status.';
-    } else if (error.response?.status === 404) {
-      errorMessage = 'Order not found.';
-    } else if (error.response?.status === 403) {
-      errorMessage = 'Access denied. Admin privileges required.';
-    } else if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
+    if (!confirm(`Are you sure you want to ${statusText} this payment?`)) {
+      return;
     }
-    
-    toast.error(errorMessage);
-    
-    // Log detailed error for debugging
-    console.error('💥 Detailed error info:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      config: error.config
-    });
-    
-  } finally {
-    setActionLoading(false);
-  }
-};
+
+    try {
+      setActionLoading(true);
+      
+      console.log('🔧 Payment verification requested:', {
+        orderId,
+        status, 
+        adminNotes: notes
+      });
+      
+      const payload = {
+        status: status,
+        admin_notes: notes || ''
+      };
+      
+      console.log('📤 Sending payload:', payload);
+      
+      const response = await adminAPI.verifyPayment(orderId, payload);
+      
+      console.log('✅ Verification response:', response.data);
+      
+      const message = status === 'paid' 
+        ? 'Payment approved successfully! Customer can now download tickets.' 
+        : 'Payment rejected successfully.';
+      
+      toast.success(message);
+      fetchOrders();
+      setShowOrderModal(false);
+      
+    } catch (error) {
+      console.error('❌ Verification failed:', error);
+      
+      let errorMessage = `Failed to ${statusText} payment`;
+      
+      if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || 'Invalid request. Please check order status.';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Order not found.';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied. Admin privileges required.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.error(errorMessage);
+      
+      console.error('💥 Detailed error info:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: error.config
+      });
+      
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const getStatusStats = () => {
     const totalOrders = pagination.total || 0;
@@ -294,9 +291,19 @@ const PaymentVerification = () => {
                             </div>
                           </td>
                           <td>
-                            <div>
-                              <div className="font-medium">{order.user?.name}</div>
-                              <div className="text-sm text-base-content/70">{order.user?.email}</div>
+                            <div className="flex items-center gap-3">
+                              {/* FIXED: Avatar dengan positioning yang lebih baik */}
+                              <div className="avatar">
+                                <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center overflow-hidden">
+                                  <span className="text-xs font-semibold leading-none">
+                                    {order.user?.name?.charAt(0).toUpperCase() || '?'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="font-medium">{order.user?.name}</div>
+                                <div className="text-sm text-base-content/70">{order.user?.email}</div>
+                              </div>
                             </div>
                           </td>
                           <td>
@@ -409,7 +416,20 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onVerifyPayment, loading, a
         {/* Order Header */}
         <div className="bg-base-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-lg">Order #{order.order_id}</h4>
+            <div className="flex items-center gap-3">
+              {/* FIXED: Avatar dengan positioning yang lebih baik */}
+              <div className="avatar">
+                <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center overflow-hidden">
+                  <span className="text-lg font-semibold leading-none">
+                    {order.user?.name?.charAt(0).toUpperCase() || '?'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-lg">Order #{order.order_id}</h4>
+                <p className="text-sm text-base-content/70">by {order.user?.name}</p>
+              </div>
+            </div>
             <div className={`badge badge-lg ${getOrderStatusBadge(order.status)}`}>
               {getOrderStatusIcon(order.status)} {getOrderStatusText(order.status)}
             </div>

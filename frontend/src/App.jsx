@@ -1,9 +1,9 @@
-// frontend/src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import AdminRestrictedRoute from './components/common/AdminRestrictedRoute';
 import AuthDebug from './components/common/AuthDebug';
 
 // Pages
@@ -57,12 +57,16 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              
+              {/* UPDATED: Orders page - restricted for admin, only for regular users */}
               <Route 
                 path="/orders" 
                 element={
-                  <ProtectedRoute>
-                    <Orders />
-                  </ProtectedRoute>
+                  <AdminRestrictedRoute message="Admin accounts cannot access user orders. Please use Payment Verification instead.">
+                    <ProtectedRoute>
+                      <Orders />
+                    </ProtectedRoute>
+                  </AdminRestrictedRoute>
                 } 
               />
               
@@ -99,7 +103,6 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-              {/* NEW: Payment Verification Route */}
               <Route 
                 path="/admin/orders" 
                 element={

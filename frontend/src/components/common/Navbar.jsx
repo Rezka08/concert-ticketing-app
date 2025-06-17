@@ -94,14 +94,14 @@ const Navbar = () => {
               Concerts
             </Link>
           </li>
-          {/* UPDATED: Both admin and users can access My Orders */}
-          {isAuthenticated && (
+          {/* UPDATED: Hanya regular users yang bisa akses My Orders */}
+          {isAuthenticated && !isAdmin && (
             <li>
               <Link 
                 to="/orders" 
                 className={`hover:text-primary ${location.pathname === '/orders' ? 'text-primary' : ''}`}
               >
-                {isAdmin ? 'View Orders' : 'My Orders'}
+                My Orders
               </Link>
             </li>
           )}
@@ -122,8 +122,11 @@ const Navbar = () => {
         {isAuthenticated && user ? (
           <div className="dropdown dropdown-end">
             <label tabIndex={0} className="btn btn-ghost btn-circle avatar">
-              <div className="w-10 rounded-full bg-primary text-white flex items-center justify-center">
-                <HiUser className="w-6 h-6" />
+              {/* FIXED: Avatar dengan positioning yang lebih baik */}
+              <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center overflow-hidden">
+                <span className="text-lg font-semibold leading-none">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
               </div>
             </label>
             <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
@@ -140,12 +143,15 @@ const Navbar = () => {
                   Profile
                 </Link>
               </li>
-              <li>
-                <Link to="/orders" onClick={closeMenu}>
-                  <HiShoppingCart className="w-4 h-4" />
-                  {isAdmin ? 'View All Orders' : 'My Orders'}
-                </Link>
-              </li>
+              {/* UPDATED: Hanya regular users yang bisa akses My Orders */}
+              {!isAdmin && (
+                <li>
+                  <Link to="/orders" onClick={closeMenu}>
+                    <HiShoppingCart className="w-4 h-4" />
+                    My Orders
+                  </Link>
+                </li>
+              )}
               {isAdmin && (
                 <>
                   <li>
@@ -229,16 +235,19 @@ const Navbar = () => {
                 <div className="divider my-2">
                   <span className="text-sm font-semibold">{user.name} ({user.role})</span>
                 </div>
-                <li>
-                  <Link 
-                    to="/orders" 
-                    onClick={closeMenu}
-                    className={location.pathname === '/orders' ? 'active' : ''}
-                  >
-                    <HiShoppingCart className="w-4 h-4" />
-                    {isAdmin ? 'View Orders' : 'My Orders'}
-                  </Link>
-                </li>
+                {/* UPDATED: Hanya regular users yang bisa akses My Orders */}
+                {!isAdmin && (
+                  <li>
+                    <Link 
+                      to="/orders" 
+                      onClick={closeMenu}
+                      className={location.pathname === '/orders' ? 'active' : ''}
+                    >
+                      <HiShoppingCart className="w-4 h-4" />
+                      My Orders
+                    </Link>
+                  </li>
+                )}
                 <li>
                   <Link 
                     to="/profile" 

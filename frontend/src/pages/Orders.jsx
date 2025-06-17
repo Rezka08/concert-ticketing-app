@@ -119,16 +119,6 @@ const Orders = () => {
     }
   };
 
-  // Preview PDF Ticket
-  const handlePreviewTicket = async (orderId) => {
-    try {
-      await ticketsAPI.previewTicketPDF(orderId);
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to preview ticket';
-      toast.error(message);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-base-200 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -314,33 +304,23 @@ const Orders = () => {
                         )}
                         
                         {order.status === 'paid' && (
-                          <>
-                            <button
-                              onClick={() => handleDownloadTicket(order.order_id)}
-                              className="btn btn-success btn-sm"
-                              disabled={downloadLoading[order.order_id]}
-                            >
-                              {downloadLoading[order.order_id] ? (
-                                <>
-                                  <span className="loading loading-spinner loading-sm"></span>
-                                  Downloading...
-                                </>
-                              ) : (
-                                <>
-                                  <HiDownload className="w-4 h-4 mr-2" />
-                                  Download Tickets
-                                </>
-                              )}
-                            </button>
-                            
-                            <button
-                              onClick={() => handlePreviewTicket(order.order_id)}
-                              className="btn btn-info btn-outline btn-sm"
-                            >
-                              <HiEye className="w-4 h-4 mr-2" />
-                              Preview
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleDownloadTicket(order.order_id)}
+                            className="btn btn-success btn-sm"
+                            disabled={downloadLoading[order.order_id]}
+                          >
+                            {downloadLoading[order.order_id] ? (
+                              <>
+                                <span className="loading loading-spinner loading-sm"></span>
+                                Downloading...
+                              </>
+                            ) : (
+                              <>
+                                <HiDownload className="w-4 h-4 mr-2" />
+                                Download Tickets
+                              </>
+                            )}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -367,7 +347,6 @@ const Orders = () => {
           onSubmitPayment={handleSubmitPayment}
           onCancel={handleCancelOrder}
           onDownloadTicket={handleDownloadTicket}
-          onPreviewTicket={handlePreviewTicket}
           loading={actionLoading}
           downloadLoading={downloadLoading}
         />
@@ -376,7 +355,7 @@ const Orders = () => {
   );
 };
 
-// Enhanced Order Details Modal Component
+// Enhanced Order Details Modal Component - UPDATED: Removed Preview
 const OrderDetailsModal = ({ 
   isOpen, 
   onClose, 
@@ -384,7 +363,6 @@ const OrderDetailsModal = ({
   onSubmitPayment, 
   onCancel, 
   onDownloadTicket, 
-  onPreviewTicket,
   loading,
   downloadLoading
 }) => {
@@ -520,16 +498,17 @@ const OrderDetailsModal = ({
           </div>
         )}
 
+        {/* UPDATED: Hanya Download, tidak ada Preview */}
         {order.status === 'paid' && (
           <div className="bg-success/10 p-4 rounded-lg">
             <h4 className="font-semibold text-success mb-2">✅ Payment Confirmed</h4>
             <p className="text-sm mb-3">
               Your payment has been confirmed! You can now download your tickets.
             </p>
-            <div className="flex gap-3">
+            <div className="flex justify-center">
               <button
                 onClick={() => onDownloadTicket(order.order_id)}
-                className="btn btn-success flex-1"
+                className="btn btn-success btn-lg"
                 disabled={downloadLoading[order.order_id]}
               >
                 {downloadLoading[order.order_id] ? (
@@ -539,17 +518,10 @@ const OrderDetailsModal = ({
                   </>
                 ) : (
                   <>
-                    <HiDownload className="w-4 h-4 mr-2" />
+                    <HiDownload className="w-5 h-5 mr-2" />
                     Download PDF Tickets
                   </>
                 )}
-              </button>
-              <button
-                onClick={() => onPreviewTicket(order.order_id)}
-                className="btn btn-info btn-outline"
-              >
-                <HiEye className="w-4 h-4 mr-2" />
-                Preview
               </button>
             </div>
           </div>
