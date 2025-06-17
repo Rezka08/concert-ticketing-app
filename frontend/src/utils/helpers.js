@@ -1,9 +1,17 @@
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addHours } from 'date-fns';
+import { id } from 'date-fns/locale';
 
-export const formatDate = (dateString) => {
+export const formatDate = (dateString, includeTime = false) => {
   if (!dateString) return '';
   try {
-    return format(parseISO(dateString), 'dd MMM yyyy');
+    const date = parseISO(dateString);
+    // Convert UTC to WITA (UTC+8)
+    const witaDate = addHours(date, 8);
+    
+    if (includeTime) {
+      return format(witaDate, 'dd MMM yyyy, HH:mm', { locale: id }) + ' WITA';
+    }
+    return format(witaDate, 'dd MMM yyyy', { locale: id });
   } catch (error) {
     return dateString;
   }
@@ -12,9 +20,11 @@ export const formatDate = (dateString) => {
 export const formatTime = (timeString) => {
   if (!timeString) return '';
   try {
-    // Handle both full datetime and time-only strings
     if (timeString.includes('T')) {
-      return format(parseISO(timeString), 'HH:mm');
+      const date = parseISO(timeString);
+      // Convert UTC to WITA (UTC+8) 
+      const witaDate = addHours(date, 8);
+      return format(witaDate, 'HH:mm') + ' WITA';
     } else {
       // Time only string like "19:30:00"
       const [hours, minutes] = timeString.split(':');
@@ -28,10 +38,44 @@ export const formatTime = (timeString) => {
 export const formatDateTime = (dateTimeString) => {
   if (!dateTimeString) return '';
   try {
-    return format(parseISO(dateTimeString), 'dd MMM yyyy, HH:mm');
+    const date = parseISO(dateTimeString);
+    // Convert UTC to WITA (UTC+8)
+    const witaDate = addHours(date, 8);
+    return format(witaDate, 'dd MMM yyyy, HH:mm', { locale: id }) + ' WITA';
   } catch (error) {
     return dateTimeString;
   }
+};
+
+// NEW: Format untuk display yang lebih detail
+export const formatDateTimeDetail = (dateTimeString) => {
+  if (!dateTimeString) return '';
+  try {
+    const date = parseISO(dateTimeString);
+    const witaDate = addHours(date, 8);
+    return format(witaDate, 'EEEE, dd MMMM yyyy pukul HH:mm', { locale: id }) + ' WITA';
+  } catch (error) {
+    return dateTimeString;
+  }
+};
+
+// NEW: Format untuk admin dashboard (lebih ringkas)
+export const formatDateTimeAdmin = (dateTimeString) => {
+  if (!dateTimeString) return '';
+  try {
+    const date = parseISO(dateTimeString);
+    const witaDate = addHours(date, 8);
+    return format(witaDate, 'dd/MM/yy HH:mm', { locale: id });
+  } catch (error) {
+    return dateTimeString;
+  }
+};
+
+// NEW: Get current WITA time for frontend
+export const getCurrentWITATime = () => {
+  const now = new Date();
+  const witaNow = addHours(now, 8);
+  return format(witaNow, 'dd MMM yyyy, HH:mm', { locale: id }) + ' WITA';
 };
 
 export const formatCurrency = (amount) => {
@@ -42,18 +86,16 @@ export const formatCurrency = (amount) => {
   }).format(amount);
 };
 
-// UPDATE: Tambah status baru
 export const getOrderStatusBadge = (status) => {
   const badges = {
     pending: 'badge-warning',
-    payment_submitted: 'badge-info',  // NEW: Status untuk payment yang sudah disubmit
+    payment_submitted: 'badge-info',
     paid: 'badge-success',
     cancelled: 'badge-error'
   };
   return badges[status] || 'badge-neutral';
 };
 
-// NEW: Function untuk mendapatkan teks status yang user-friendly
 export const getOrderStatusText = (status) => {
   const statusTexts = {
     pending: 'Pending Payment',
@@ -64,7 +106,6 @@ export const getOrderStatusText = (status) => {
   return statusTexts[status] || status;
 };
 
-// NEW: Function untuk mendapatkan icon status
 export const getOrderStatusIcon = (status) => {
   const icons = {
     pending: '⏳',
