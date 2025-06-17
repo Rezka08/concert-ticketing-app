@@ -10,10 +10,29 @@ const Home = () => {
   const [upcomingConcerts, setUpcomingConcerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Array of background images for slideshow
+  const heroImages = [
+    'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    // 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80',
+    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'
+  ];
 
   useEffect(() => {
     fetchUpcomingConcerts();
   }, []);
+
+  // Slideshow auto-rotation effect
+  useEffect(() => {
+    const slideInterval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroImages.length);
+    }, 4000); // Change slide every 4 seconds
+
+    return () => clearInterval(slideInterval);
+  }, [heroImages.length]);
 
   const fetchUpcomingConcerts = async () => {
     try {
@@ -31,25 +50,84 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <div className="hero min-h-[70vh] bg-gradient-to-r from-primary to-secondary">
-        <div className="hero-content text-center text-white">
-          <div className="max-w-md">
-            <h1 className="mb-5 text-5xl font-bold">
-              🎵 Concert Ticketing
-            </h1>
-            <p className="mb-5 text-lg">
-              Discover amazing concerts and secure your tickets for unforgettable live music experiences.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Link to="/concerts" className="btn btn-white btn-lg">
-                Browse Concerts
-                <HiArrowRight className="w-5 h-5 ml-2" />
-              </Link>
+    <div className="min-h-screen">      {/* Hero Section with Slideshow */}
+      <div className="relative min-h-[70vh] overflow-hidden">
+        {/* Background Images */}
+        {heroImages.map((image, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <div 
+              className="w-full h-full bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${image})` }}
+            >
+              {/* Dark overlay for better text readability */}
+              <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+            </div>
+          </div>
+        ))}
+        
+        {/* Content Overlay */}
+        <div className="relative z-10 hero min-h-[70vh]">
+          <div className="hero-content text-center text-white">
+            <div className="max-w-md">
+              <h1 className="mb-5 text-5xl font-bold drop-shadow-lg">
+                🎵 Concert Ticketing
+              </h1>
+              <p className="mb-5 text-lg drop-shadow-md">
+                Discover amazing concerts and secure your tickets for unforgettable live music experiences.
+              </p>
+              <div className="flex gap-4 justify-center">
+                <Link to="/concerts" className="btn btn-white btn-lg shadow-lg hover:shadow-xl transition-shadow">
+                  Browse Concerts
+                  <HiArrowRight className="w-5 h-5 ml-2" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Slide Indicators */}
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="flex space-x-2">
+            {heroImages.map((_, index) => (
+              <button
+                key={index}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  index === currentSlide 
+                    ? 'bg-white scale-110' 
+                    : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                }`}
+                onClick={() => setCurrentSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Navigation Arrows */}
+        <button
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full p-3 transition-all duration-300"
+          onClick={() => setCurrentSlide((prev) => (prev - 1 + heroImages.length) % heroImages.length)}
+          aria-label="Previous slide"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        
+        <button
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full p-3 transition-all duration-300"
+          onClick={() => setCurrentSlide((prev) => (prev + 1) % heroImages.length)}
+          aria-label="Next slide"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
       {/* Features Section */}
