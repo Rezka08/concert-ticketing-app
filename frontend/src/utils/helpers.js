@@ -42,13 +42,37 @@ export const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+// UPDATE: Tambah status baru
 export const getOrderStatusBadge = (status) => {
   const badges = {
     pending: 'badge-warning',
+    payment_submitted: 'badge-info',  // NEW: Status untuk payment yang sudah disubmit
     paid: 'badge-success',
     cancelled: 'badge-error'
   };
   return badges[status] || 'badge-neutral';
+};
+
+// NEW: Function untuk mendapatkan teks status yang user-friendly
+export const getOrderStatusText = (status) => {
+  const statusTexts = {
+    pending: 'Pending Payment',
+    payment_submitted: 'Awaiting Verification',
+    paid: 'Confirmed',
+    cancelled: 'Cancelled'
+  };
+  return statusTexts[status] || status;
+};
+
+// NEW: Function untuk mendapatkan icon status
+export const getOrderStatusIcon = (status) => {
+  const icons = {
+    pending: '⏳',
+    payment_submitted: '🔍',
+    paid: '✅',
+    cancelled: '❌'
+  };
+  return icons[status] || '❓';
 };
 
 export const getConcertStatusBadge = (status) => {

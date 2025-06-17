@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ordersAPI } from '../services/orders';
 import { ticketsAPI } from '../services/tickets';
-import { formatDateTime, formatCurrency, getOrderStatusBadge } from '../utils/helpers';
+import { formatDateTime, formatCurrency, getOrderStatusBadge, getOrderStatusText, getOrderStatusIcon } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Pagination from '../components/common/Pagination';
 import Modal from '../components/common/Modal';
 import { useAuth } from '../context/AuthContext';
-import { HiTicket, HiCalendar, HiCreditCard, HiEye, HiX, HiDownload, HiClock } from 'react-icons/hi';
+import { HiTicket, HiCalendar, HiCreditCard, HiEye, HiX, HiDownload, HiClock, HiCheckCircle, HiExclamationCircle } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 
 const Orders = () => {
@@ -68,15 +68,16 @@ const Orders = () => {
     }
   };
 
-  const handlePayOrder = async (orderId) => {
+  // UPDATE: Function untuk submit payment (bukan approve)
+  const handleSubmitPayment = async (orderId) => {
     try {
       setActionLoading(true);
       await ordersAPI.payOrder(orderId, { payment_method: 'bank_transfer' });
-      toast.success('Payment submitted successfully! Please wait for admin confirmation.');
+      toast.success('Payment submitted successfully! Please wait for admin verification.');
       fetchOrders();
       setShowOrderModal(false);
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to process payment';
+      const message = error.response?.data?.message || 'Failed to submit payment';
       toast.error(message);
     } finally {
       setActionLoading(false);
@@ -102,7 +103,7 @@ const Orders = () => {
     }
   };
 
-  // NEW: Download PDF Ticket
+  // Download PDF Ticket
   const handleDownloadTicket = async (orderId) => {
     try {
       setDownloadLoading(prev => ({ ...prev, [orderId]: true }));
@@ -118,7 +119,7 @@ const Orders = () => {
     }
   };
 
-  // NEW: Preview PDF Ticket
+  // Preview PDF Ticket
   const handlePreviewTicket = async (orderId) => {
     try {
       await ticketsAPI.previewTicketPDF(orderId);
@@ -154,6 +155,7 @@ const Orders = () => {
                 >
                   <option value="">All Orders</option>
                   <option value="pending">⏳ Pending Payment</option>
+                  <option value="payment_submitted">🔍 Awaiting Verification</option>
                   <option value="paid">✅ Confirmed</option>
                   <option value="cancelled">❌ Cancelled</option>
                 </select>
@@ -202,10 +204,7 @@ const Orders = () => {
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold">Order #{order.order_id}</h3>
                           <div className={`badge ${getOrderStatusBadge(order.status)}`}>
-                            {order.status === 'pending' && '⏳ '}
-                            {order.status === 'paid' && '✅ '}
-                            {order.status === 'cancelled' && '❌ '}
-                            {order.status}
+                            {getOrderStatusIcon(order.status)} {getOrderStatusText(order.status)}
                           </div>
                         </div>
                         
@@ -229,18 +228,42 @@ const Orders = () => {
                             </span>
                           </p>
 
-                          {/* Show status message */}
+                          {/* Status-specific messages */}
                           {order.status === 'pending' && (
                             <div className="flex items-center gap-2 text-warning">
                               <HiClock className="w-4 h-4" />
-                              <span className="text-sm">Waiting for payment confirmation...</span>
+                              <span className="text-sm">Please submit your payment to proceed.</span>
+                            </div>
+                          )}
+                          
+                          {order.status === 'payment_submitted' && (
+                            <div className="flex items-center gap-2 text-info">
+                              <HiExclamationCircle className="w-4 h-4" />
+                              <span className="text-sm">Payment submitted, waiting for admin verification...</span>
+                              {order.payment_submitted_at && (
+                                <span className="text-xs">
+                                  (Submitted: {formatDateTime(order.payment_submitted_at)})
+                                </span>
+                              )}
                             </div>
                           )}
                           
                           {order.status === 'paid' && (
                             <div className="flex items-center gap-2 text-success">
-                              <HiTicket className="w-4 h-4" />
+                              <HiCheckCircle className="w-4 h-4" />
                               <span className="text-sm">Payment confirmed! You can download your tickets.</span>
+                              {order.payment_verified_at && (
+                                <span className="text-xs">
+                                  (Verified: {formatDateTime(order.payment_verified_at)})
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {order.status === 'cancelled' && (
+                            <div className="flex items-center gap-2 text-error">
+                              <HiX className="w-4 h-4" />
+                              <span className="text-sm">Order cancelled.</span>
                             </div>
                           )}
                         </div>
@@ -255,11 +278,11 @@ const Orders = () => {
                           View Details
                         </button>
                         
-                        {/* Order Status Specific Actions */}
+                        {/* Status-specific actions */}
                         {order.status === 'pending' && (
                           <>
                             <button
-                              onClick={() => handlePayOrder(order.order_id)}
+                              onClick={() => handleSubmitPayment(order.order_id)}
                               className="btn btn-primary btn-sm"
                               disabled={actionLoading}
                             >
@@ -274,8 +297,22 @@ const Orders = () => {
                             </button>
                           </>
                         )}
+
+                        {order.status === 'payment_submitted' && (
+                          <>
+                            <div className="text-center">
+                              <span className="text-sm text-info">Awaiting admin verification</span>
+                            </div>
+                            <button
+                              onClick={() => handleCancelOrder(order.order_id)}
+                              className="btn btn-error btn-outline btn-sm"
+                              disabled={actionLoading}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
                         
-                        {/* NEW: Download Tickets for Paid Orders */}
                         {order.status === 'paid' && (
                           <>
                             <button
@@ -327,7 +364,7 @@ const Orders = () => {
           isOpen={showOrderModal}
           onClose={() => setShowOrderModal(false)}
           order={selectedOrder}
-          onPay={handlePayOrder}
+          onSubmitPayment={handleSubmitPayment}
           onCancel={handleCancelOrder}
           onDownloadTicket={handleDownloadTicket}
           onPreviewTicket={handlePreviewTicket}
@@ -344,7 +381,7 @@ const OrderDetailsModal = ({
   isOpen, 
   onClose, 
   order, 
-  onPay, 
+  onSubmitPayment, 
   onCancel, 
   onDownloadTicket, 
   onPreviewTicket,
@@ -361,10 +398,7 @@ const OrderDetailsModal = ({
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-semibold">Order #{order.order_id}</h4>
             <div className={`badge badge-lg ${getOrderStatusBadge(order.status)}`}>
-              {order.status === 'pending' && '⏳ '}
-              {order.status === 'paid' && '✅ '}
-              {order.status === 'cancelled' && '❌ '}
-              {order.status}
+              {getOrderStatusIcon(order.status)} {getOrderStatusText(order.status)}
             </div>
           </div>
           
@@ -380,7 +414,28 @@ const OrderDetailsModal = ({
                 <p className="font-medium capitalize">{order.payment_method.replace('_', ' ')}</p>
               </div>
             )}
+
+            {order.payment_submitted_at && (
+              <div>
+                <span className="text-base-content/70">Payment Submitted:</span>
+                <p className="font-medium">{formatDateTime(order.payment_submitted_at)}</p>
+              </div>
+            )}
+
+            {order.payment_verified_at && (
+              <div>
+                <span className="text-base-content/70">Payment Verified:</span>
+                <p className="font-medium">{formatDateTime(order.payment_verified_at)}</p>
+              </div>
+            )}
           </div>
+
+          {order.admin_notes && (
+            <div className="mt-4 p-3 bg-base-200 rounded-lg">
+              <span className="text-base-content/70">Admin Notes:</span>
+              <p className="mt-1">{order.admin_notes}</p>
+            </div>
+          )}
         </div>
 
         {/* Order Items */}
@@ -422,7 +477,7 @@ const OrderDetailsModal = ({
             </p>
             <div className="flex gap-4">
               <button
-                onClick={() => onPay(order.order_id)}
+                onClick={() => onSubmitPayment(order.order_id)}
                 className="btn btn-primary flex-1"
                 disabled={loading}
               >
@@ -435,6 +490,25 @@ const OrderDetailsModal = ({
                   'Submit Payment'
                 )}
               </button>
+              <button
+                onClick={() => onCancel(order.order_id)}
+                className="btn btn-error btn-outline flex-1"
+                disabled={loading}
+              >
+                Cancel Order
+              </button>
+            </div>
+          </div>
+        )}
+
+        {order.status === 'payment_submitted' && (
+          <div className="bg-info/10 p-4 rounded-lg">
+            <h4 className="font-semibold text-info mb-2">🔍 Awaiting Verification</h4>
+            <p className="text-sm mb-3">
+              Your payment has been submitted and is currently being verified by our admin team. 
+              You will be notified once the verification is complete.
+            </p>
+            <div className="flex gap-3">
               <button
                 onClick={() => onCancel(order.order_id)}
                 className="btn btn-error btn-outline flex-1"

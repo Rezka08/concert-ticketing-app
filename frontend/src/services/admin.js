@@ -28,7 +28,20 @@ export const adminAPI = {
     return api.get(`/admin/orders?${searchParams}`);
   },
   
-  verifyPayment: (orderId, status) => api.put(`/admin/orders/${orderId}/verify`, { status }),
+  // FIXED: Payment verification with proper payload structure
+  verifyPayment: (orderId, payloadData) => {
+    console.log('🔧 Admin API: Verify payment called with:', { orderId, payloadData });
+    
+    // Ensure proper payload structure
+    const payload = {
+      status: payloadData.status || payloadData,  // Support both object and string
+      admin_notes: payloadData.admin_notes || payloadData.adminNotes || ''
+    };
+    
+    console.log('📤 Sending payload to backend:', payload);
+    
+    return api.put(`/admin/orders/${orderId}/verify`, payload);
+  },
   
   // Sales reports
   getSalesReport: (params = {}) => {

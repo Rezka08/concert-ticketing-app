@@ -22,7 +22,7 @@ def get_user_orders(current_user):
         query = Order.query.filter_by(user_id=current_user.user_id)
         
         # Filter by status
-        if status and status in ['pending', 'paid', 'cancelled']:
+        if status and status in ['pending', 'payment_submitted', 'paid', 'cancelled']:
             query = query.filter(Order.status == status)
         
         # Order by created_at desc
@@ -70,7 +70,7 @@ def create_order(current_user):
             user_id=current_user.user_id,
             total_amount=0,
             payment_method=payment_method,
-            status='pending'
+            status='pending'  # Status awal tetap pending
         )
         
         db.session.add(order)
@@ -132,6 +132,7 @@ def create_order(current_user):
         db.session.rollback()
         return error_response('Failed to create order', 500)
 
+# FIXED: Update endpoint pay order
 @orders_bp.route('/<int:order_id>/pay', methods=['PUT'])
 @user_required
 def pay_order(current_user, order_id):
@@ -144,24 +145,29 @@ def pay_order(current_user, order_id):
         if not order:
             return error_response('Order not found', 404)
         
-        if order.status != 'pending':
-            return error_response('Order is not in pending status', 400)
+        if order.status not in ['pending', 'payment_submitted']:
+            return error_response('Order cannot be paid in current status', 400)
         
         data = request.get_json()
         payment_method = data.get('payment_method', order.payment_method)
         
-        # Update order status
-        order.status = 'paid'
+        # FIXED: Ubah status ke payment_submitted, bukan paid
+        order.status = 'payment_submitted'
+        order.payment_submitted_at = datetime.utcnow()
+        
         if payment_method:
             order.payment_method = payment_method
         
         db.session.commit()
         
-        return success_response(order.to_dict(), 'Payment processed successfully')
+        return success_response(
+            order.to_dict(), 
+            'Payment submitted successfully! Please wait for admin verification.'
+        )
         
     except Exception as e:
         db.session.rollback()
-        return error_response('Failed to process payment', 500)
+        return error_response('Failed to submit payment', 500)
 
 @orders_bp.route('/<int:order_id>/cancel', methods=['PUT'])
 @user_required
@@ -175,7 +181,8 @@ def cancel_order(current_user, order_id):
         if not order:
             return error_response('Order not found', 404)
         
-        if order.status != 'pending':
+        # Allow cancellation only for pending and payment_submitted orders
+        if order.status not in ['pending', 'payment_submitted']:
             return error_response('Only pending orders can be cancelled', 400)
         
         # Restore ticket quantities

@@ -1,3 +1,4 @@
+import traceback
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
@@ -184,7 +185,7 @@ def get_all_orders(current_user):
         query = Order.query
         
         # Filter by status
-        if status and status in ['pending', 'paid', 'cancelled']:
+        if status and status in ['pending', 'payment_submitted', 'paid', 'cancelled']:
             query = query.filter(Order.status == status)
         
         # Order by created_at desc
@@ -202,42 +203,105 @@ def get_all_orders(current_user):
 @admin_required
 def verify_payment(current_user, order_id):
     try:
-        order = Order.query.get(order_id)
+        print(f"🔧 Admin verify payment called: Order #{order_id} by {current_user.name}")
         
+        # Get the order
+        order = Order.query.get(order_id)
         if not order:
+            print(f"❌ Order #{order_id} not found")
             return error_response('Order not found', 404)
         
+        print(f"📋 Current order status: {order.status}")
+        
+        # Get request data
         data = request.get_json()
-        status = data.get('status', 'paid')
+        print(f"📥 Received payload: {data}")
         
-        if status not in ['paid', 'cancelled']:
-            return error_response('Invalid status', 400)
+        if not data:
+            print("❌ No JSON payload received")
+            return error_response('No data provided', 400)
         
-        if order.status == 'paid' and status == 'cancelled':
-            # If changing from paid to cancelled, restore ticket quantities
-            for order_item in order.order_items:
-                ticket_type = order_item.ticket_type
-                ticket_type.quantity_available += order_item.quantity
-        elif order.status == 'cancelled' and status == 'paid':
-            # If changing from cancelled to paid, check availability
-            for order_item in order.order_items:
-                ticket_type = order_item.ticket_type
-                if ticket_type.quantity_available < order_item.quantity:
-                    return error_response(f'Not enough tickets available for {ticket_type.name}', 400)
+        # Extract and validate status
+        new_status = data.get('status')
+        admin_notes = data.get('admin_notes', '')
+        
+        print(f"📊 Requested status change: {order.status} → {new_status}")
+        print(f"📝 Admin notes: {admin_notes}")
+        
+        # Validate status parameter
+        if not new_status:
+            print("❌ Status parameter missing")
+            return error_response('Status is required', 400)
+        
+        if new_status not in ['paid', 'cancelled']:
+            print(f"❌ Invalid status: {new_status}")
+            return error_response('Invalid status. Must be "paid" or "cancelled"', 400)
+        
+        # Validate current order status
+        if order.status not in ['pending', 'payment_submitted']:
+            print(f"❌ Cannot verify payment for order with status: {order.status}")
+            return error_response(
+                f'Cannot verify payment for order with status "{order.status}". Order must be pending or payment_submitted.', 
+                400
+            )
+        
+        # Handle status transition logic
+        if new_status == 'paid':
+            print("✅ Approving payment...")
             
-            # Reduce availability
-            for order_item in order.order_items:
-                ticket_type = order_item.ticket_type
-                ticket_type.quantity_available -= order_item.quantity
+            # If changing from cancelled to paid, check ticket availability
+            if order.status == 'cancelled':
+                print("🔍 Checking ticket availability for previously cancelled order...")
+                for order_item in order.order_items:
+                    ticket_type = order_item.ticket_type
+                    if ticket_type.quantity_available < order_item.quantity:
+                        print(f"❌ Not enough tickets: {ticket_type.name}")
+                        return error_response(
+                            f'Not enough tickets available for {ticket_type.name}. Available: {ticket_type.quantity_available}, Required: {order_item.quantity}', 
+                            400
+                        )
+                
+                # Reserve tickets again
+                for order_item in order.order_items:
+                    ticket_type = order_item.ticket_type
+                    ticket_type.quantity_available -= order_item.quantity
+                    print(f"🎫 Reserved {order_item.quantity} tickets for {ticket_type.name}")
+            
+            # Update order status
+            order.status = 'paid'
+            order.payment_verified_at = datetime.utcnow()
+            order.admin_notes = admin_notes
+            
+        elif new_status == 'cancelled':
+            print("❌ Rejecting payment...")
+            
+            # If changing from paid to cancelled, restore ticket quantities
+            if order.status == 'paid':
+                print("🔄 Restoring ticket quantities...")
+                for order_item in order.order_items:
+                    ticket_type = order_item.ticket_type
+                    ticket_type.quantity_available += order_item.quantity
+                    print(f"🎫 Restored {order_item.quantity} tickets for {ticket_type.name}")
+            
+            # Update order status
+            order.status = 'cancelled'
+            order.admin_notes = admin_notes
         
-        order.status = status
+        # Commit changes
         db.session.commit()
         
-        return success_response(order.to_dict(), f'Order {status} successfully')
+        action_text = "approved" if new_status == 'paid' else "rejected"
+        success_message = f'Payment {action_text} successfully'
+        
+        print(f"✅ Payment {action_text} for order #{order_id}")
+        
+        return success_response(order.to_dict(), success_message)
         
     except Exception as e:
+        print(f"❌ Error in verify_payment: {str(e)}")
+        print(f"🔍 Traceback: {traceback.format_exc()}")
         db.session.rollback()
-        return error_response('Failed to verify payment', 500)
+        return error_response('Failed to verify payment. Please check server logs for details.', 500)
 
 @admin_bp.route('/sales-report', methods=['GET'])
 @admin_required
