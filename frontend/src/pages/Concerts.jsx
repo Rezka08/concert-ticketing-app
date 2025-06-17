@@ -69,11 +69,22 @@ const Concerts = () => {
   return (
     <div className="min-h-screen bg-base-100">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-primary to-secondary text-white py-16">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-4">Browse Concerts</h1>
-          <p className="text-lg opacity-90">
-            Discover amazing live music events and secure your tickets
+      <div 
+        className="relative h-[400px] bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80')",
+        }}
+      >
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/40"></div>
+        
+        {/* Content */}
+        <div className="relative h-full max-w-7xl mx-auto px-4 flex flex-col justify-center">
+          <h1 className="text-5xl font-bold text-white mb-6 drop-shadow-lg">
+            Browse Concerts
+          </h1>
+          <p className="text-xl text-white/90 max-w-2xl drop-shadow-md">
+            Discover amazing live music events and secure your tickets for unforgettable performances
           </p>
         </div>
       </div>
