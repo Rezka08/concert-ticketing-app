@@ -3,6 +3,7 @@ from datetime import datetime, date, time
 from app import db
 from app.models.concert import Concert
 from app.models.ticket_type import TicketType
+from app.models.order_item import OrderItem
 from app.utils.auth import admin_required, user_required
 from app.utils.helpers import success_response, error_response, paginate_query
 
@@ -157,33 +158,48 @@ def update_concert(current_user, concert_id):
 @admin_required
 def delete_concert(current_user, concert_id):
     try:
+        print(f"🗑️ Admin {current_user.name} attempting to delete concert #{concert_id}")
+        
+        # Get the concert
         concert = Concert.query.get(concert_id)
         
         if not concert:
+            print(f"❌ Concert #{concert_id} not found")
             return error_response('Concert not found', 404)
         
-        # Check if there are any orders for this concert
-        # This is done by checking if any ticket types have order items
-        has_orders = db.session.query(
-            db.exists().where(
-                TicketType.concert_id == concert_id
-            ).where(
-                TicketType.ticket_type_id.in_(
-                    db.session.query(db.distinct(db.text('order_items.ticket_type_id')))
-                    .select_from(db.text('order_items'))
-                )
-            )
-        ).scalar()
+        print(f"📋 Found concert: {concert.title}")
         
-        if has_orders:
-            return error_response('Cannot delete concert with existing orders', 400)
+        ticket_types = TicketType.query.filter_by(concert_id=concert_id).all()
         
+        if ticket_types:
+            # Get all ticket type IDs
+            ticket_type_ids = [tt.ticket_type_id for tt in ticket_types]
+            
+            # Check if any order items exist for these ticket types
+            existing_orders = OrderItem.query.filter(
+                OrderItem.ticket_type_id.in_(ticket_type_ids)
+            ).first()
+            
+            if existing_orders:
+                print(f"❌ Cannot delete concert #{concert_id}: Has existing orders")
+                return error_response('Cannot delete concert with existing orders', 400)
+        
+        print(f"✅ Concert #{concert_id} is safe to delete (no existing orders)")
+        
+        # Delete the concert
         db.session.delete(concert)
         db.session.commit()
+        
+        print(f"🗑️ Concert #{concert_id} deleted successfully")
         
         return success_response(None, 'Concert deleted successfully')
         
     except Exception as e:
+        print(f"❌ Error deleting concert #{concert_id}: {str(e)}")
+        print(f"🔍 Exception details: {type(e).__name__}")
+        import traceback
+        print(f"📋 Traceback: {traceback.format_exc()}")
+        
         db.session.rollback()
         return error_response('Failed to delete concert', 500)
 
