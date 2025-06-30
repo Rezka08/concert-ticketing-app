@@ -6,15 +6,35 @@ A modern, fullstack web application for online concert ticketing, built with the
 
 ## 🚀 Tech Stack
 
-- **Frontend:** React.js (Vite, Context API, React Router, Tailwind CSS, DaisyUI)
-- **Backend:** Python Flask (Blueprint, SQLAlchemy, Flask-JWT-Extended, Flask-CORS)
-- **Database:** MySQL
-- **PDF Generation:** Pillow, ReportLab
-- **Authentication:** JWT (JSON Web Token)
-- **State Management:** React Context
-- **API Communication:** Axios
-- **Styling:** Tailwind CSS, DaisyUI
-- **Dev Tools:** ESLint, PostCSS, Vite
+<p align="center">
+  <!-- Frontend -->
+  <img src="https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB" alt="React.js" height="30" />
+  <img src="https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=FFD62E" alt="Vite" height="30" />
+  <img src="https://img.shields.io/badge/Context%20API-509CEE?logo=redux&logoColor=white" alt="Context API" height="30" />
+  <img src="https://img.shields.io/badge/React%20Router-CA4245?logo=reactrouter&logoColor=white" alt="React Router" height="30" />
+  <img src="https://img.shields.io/badge/TailwindCSS-38B2AC?logo=tailwind-css&logoColor=white" alt="Tailwind CSS" height="30" />
+  <img src="https://img.shields.io/badge/DaisyUI-FFFFFF?logo=daisyui&logoColor=F472B6" alt="DaisyUI" height="30" />
+
+  <!-- Backend -->
+  <img src="https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white" alt="Flask" height="30" />
+  <img src="https://img.shields.io/badge/SQLAlchemy-000000?logo=sqlalchemy&logoColor=white" alt="SQLAlchemy" height="30" />
+  <img src="https://img.shields.io/badge/Flask––JWT–Extended-000000?logo=jsonwebtokens&logoColor=white" alt="Flask‑JWT‑Extended" height="30" />
+  <img src="https://img.shields.io/badge/Flask–CORS-000000?logo=cors&logoColor=white" alt="Flask‑CORS" height="30" />
+
+  <!-- Database -->
+  <img src="https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=white" alt="MySQL" height="30" />
+
+  <!-- Utilities -->
+  <img src="https://img.shields.io/badge/Pillow-FFD400?logo=pillow&logoColor=black" alt="Pillow" height="30" />
+  <img src="https://img.shields.io/badge/ReportLab-EA1F63?logo=reportlab&logoColor=white" alt="ReportLab" height="30" />
+  <img src="https://img.shields.io/badge/JWT-000000?logo=jsonwebtokens&logoColor=white" alt="JWT" height="30" />
+  <img src="https://img.shields.io/badge/Axios-5A29E4?logo=axios&logoColor=white" alt="Axios" height="30" />
+
+  <!-- Dev Tools -->
+  <img src="https://img.shields.io/badge/ESLint-4B32C3?logo=eslint&logoColor=white" alt="ESLint" height="30" />
+  <img src="https://img.shields.io/badge/PostCSS-DD3A0A?logo=postcss&logoColor=white" alt="PostCSS" height="30" />
+  <img src="https://img.shields.io/badge/Vite—Dev–Tool-646CFF?logo=vite&logoColor=FFD62E" alt="Vite Dev Tools" height="30" />
+</p>
 
 ---
 
